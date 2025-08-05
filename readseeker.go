@@ -1,4 +1,4 @@
-package archive
+package libarchive
 
 /*
 #cgo pkg-config: libarchive
@@ -24,26 +24,24 @@ type ReedSeeker struct {
 
 // NewReader returns new Archive by calling archive_read_open
 func NewReadSeeker(reader io.ReadSeeker) (r *ReedSeeker, err error) {
-	r = new(ReedSeeker)
-	r.buffer = make([]byte, 1024)
-	r.archive = C.archive_read_new()
+	r = &ReedSeeker{
+		archive: C.archive_read_new(),
+		reader:  reader,
+		buffer:  make([]byte, 1024),
+	}
 	C.archive_read_support_filter_all(r.archive)
 	C.archive_read_support_format_all(r.archive)
+	C.archive_read_set_seek_callback(r.archive, (*C.archive_seek_callback)(C.go_libarchive_seek))
 
-	seek_callback := (*C.archive_seek_callback)(C.go_libarchive_seek)
-	C.archive_read_set_seek_callback(r.archive, seek_callback)
-
-	r.reader = reader
-
-	e := C.go_libarchive_open(r.archive, unsafe.Pointer(r))
+	e := C.go_libarchive_open(r.archive, (*C.char)(unsafe.Pointer(r)))
 
 	err = codeToError(r.archive, int(e))
 	return
 }
 
 //export myseek
-func myseek(archive *C.struct_archive, client_data unsafe.Pointer, request C.int64_t, whence C.int) C.int64_t {
-	reader := (*ReedSeeker)(client_data)
+func myseek(archive *C.struct_archive, client_data *C.char, request C.int64_t, whence C.int) C.int64_t {
+	reader := (*ReedSeeker)(unsafe.Pointer(client_data))
 	offset, err := reader.reader.Seek(int64(request), int(whence))
 	if err != nil {
 		return C.int64_t(0)
@@ -113,7 +111,7 @@ func (r *ReedSeeker) Size() int {
 // calling archive_read_free
 func (r *ReedSeeker) Free() error {
 	if C.archive_read_free(r.archive) == ARCHIVE_FATAL {
-		return ErrArchiveFatal
+		return ErrArchiveFatalClosing
 	}
 	return nil
 }
@@ -122,7 +120,7 @@ func (r *ReedSeeker) Free() error {
 // calling archive read_cloe
 func (r *ReedSeeker) Close() error {
 	if C.archive_read_close(r.archive) == ARCHIVE_FATAL {
-		return ErrArchiveFatal
+		return ErrArchiveFatalClosing
 	}
 	return nil
 }
