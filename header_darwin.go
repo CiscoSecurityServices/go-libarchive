@@ -1,4 +1,4 @@
-package archive
+package libarchive
 
 /*
 #include <stdlib.h>

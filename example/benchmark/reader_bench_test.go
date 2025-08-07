@@ -1,4 +1,4 @@
-package archive_test
+package main
 
 import (
 	"archive/tar"
@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	ar "github.com/MStoykov/go-libarchive"
+	ar "github.com/CiscoSecurityServices/go-libarchive"
 )
 
 type ArchiveReader interface {
@@ -19,7 +19,6 @@ var buf = make([]byte, 4096) // probably fine
 
 func BenchTestFuncLib(b *testing.B, file io.Reader) {
 	reader, _ := ar.NewReader(file)
-	defer reader.Free()
 	defer reader.Close()
 	runBenchTest(b, wrapLibArchive(reader))
 }

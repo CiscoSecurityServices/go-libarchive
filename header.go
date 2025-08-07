@@ -1,4 +1,4 @@
-package archive
+package libarchive
 
 /*
 #cgo pkg-config: libarchive
@@ -20,6 +20,7 @@ type ArchiveEntry interface {
 	Stat() os.FileInfo
 	// The name of the entry
 	PathName() string
+	Symlink() string
 }
 
 type entryImpl struct {
@@ -40,6 +41,12 @@ func (h *entryImpl) Stat() os.FileInfo {
 
 func (h *entryImpl) PathName() string {
 	name := C.archive_entry_pathname(h.entry)
+
+	return C.GoString(name)
+}
+
+func (h *entryImpl) Symlink() string {
+	name := C.archive_entry_symlink(h.entry)
 
 	return C.GoString(name)
 }
