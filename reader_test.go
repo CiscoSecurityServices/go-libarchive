@@ -2,6 +2,8 @@ package libarchive
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"os"
 	"testing"
 )
@@ -20,6 +22,87 @@ func TestCompressedGz(t *testing.T) {
 
 func TestCompressedBz2(t *testing.T) {
 	assertCompressed(t, "./fixtures/a.bz2")
+}
+
+func TestFooA(t *testing.T) {
+	testFile, err := os.Open("./fixtures/foo.a")
+	if err != nil {
+		t.Fatalf("Error while reading fixture file %s ", err)
+	}
+
+	reader, err := NewReader(testFile)
+	if err != nil {
+		t.Fatalf("Error on creating Archive from a io.Reader:\n %s", err)
+	}
+	defer func() {
+		err := reader.Close()
+		if err != nil {
+			t.Fatalf("Error on reader Close:\n %s", err)
+		}
+	}()
+
+	v, err := reader.Next()
+	if err != nil {
+		t.Fatalf("Error getting next header:\n %s ", err)
+	}
+	if v.PathName() != "foo1" {
+		t.Fatalf("Expected foo1 got %s", v.PathName())
+	}
+	if v.Stat().Size() != 5 {
+		t.Fatalf("Expected size 5 got %d", v.Stat().Size())
+	}
+
+	v, err = reader.Next()
+	if err != nil {
+		t.Fatalf("Error getting next header:\n %s ", err)
+	}
+	if v.PathName() != "foo2" {
+		t.Fatalf("Expected foo2 got %s", v.PathName())
+	}
+	if v.Stat().Size() != 5 {
+		t.Fatalf("Expected size 5 got %d", v.Stat().Size())
+	}
+
+	_, err = reader.Next()
+	if !errors.Is(err, ErrArchiveEOF) {
+		t.Fatalf("Expected EOF got %s", err)
+	}
+}
+
+func TestSomeA(t *testing.T) {
+	testFile, err := os.ReadFile("./fixtures/foo.a")
+	if err != nil {
+		t.Fatalf("Error while reading fixture file %s ", err)
+	}
+	testFile[133] = 0xff // Corrupt the file a bit
+	fmt.Println("Length: ", len(testFile))
+
+	reader, err := NewReader(bytes.NewReader(testFile))
+	if err != nil {
+		t.Fatalf("Error on creating Archive from a io.Reader:\n %s", err)
+	}
+	defer func() {
+		err := reader.Close()
+		if err != nil {
+			t.Fatalf("Error on reader Close:\n %s", err)
+		}
+	}()
+
+	v, err := reader.Next()
+	if err != nil {
+		t.Fatalf("Error getting next header:\n %s ", err)
+	}
+	if v.PathName() != "foo1" {
+		t.Fatalf("Expected foo1 got %s", v.PathName())
+	}
+	if v.Stat().Size() != 5 {
+		t.Fatalf("Expected size 5 got %d", v.Stat().Size())
+	}
+
+	_, err = reader.Next()
+	if !errors.Is(err, ErrInvalidHeaderSignature) {
+		t.Fatalf("Expected ErrInvalidHeaderSignature got %s", err)
+	}
 }
 
 func TestTwoReaders(t *testing.T) {
