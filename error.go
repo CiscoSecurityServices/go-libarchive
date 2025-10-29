@@ -36,7 +36,6 @@ func codeToError(archive *C.struct_archive, e int) error {
 		if errString == "Incorrect file header signature" {
 			return ErrInvalidHeaderSignature
 		}
-		fmt.Print("FATAL error: ", errString, "\n")
 		return ErrArchiveFatal.wrap(errString)
 	case ARCHIVE_FAILED:
 		return ErrArchiveFailed.wrap(errorString(archive))
