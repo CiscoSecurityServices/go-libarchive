@@ -18,12 +18,13 @@ const (
 )
 
 var (
-	ErrArchiveEOF          = io.EOF
-	ErrArchiveFatal        = wrapError{level: "FATAL"}
-	ErrArchiveFailed       = wrapError{level: "FAILED"}
-	ErrArchiveRetry        = wrapError{level: "RETRY"}
-	ErrArchiveWarn         = wrapError{level: "WARN"}
-	ErrArchiveFatalClosing = ErrArchiveFatal.wrap("critical error, archive closing")
+	ErrArchiveEOF             = io.EOF
+	ErrArchiveFatal           = wrapError{level: "FATAL"}
+	ErrArchiveFailed          = wrapError{level: "FAILED"}
+	ErrArchiveRetry           = wrapError{level: "RETRY"}
+	ErrArchiveWarn            = wrapError{level: "WARN"}
+	ErrArchiveFatalClosing    = ErrArchiveFatal.wrap("critical error, archive closing")
+	ErrInvalidHeaderSignature = fmt.Errorf("invalid header signature")
 )
 
 func codeToError(archive *C.struct_archive, e int) error {
@@ -31,7 +32,12 @@ func codeToError(archive *C.struct_archive, e int) error {
 	case ARCHIVE_EOF:
 		return ErrArchiveEOF
 	case ARCHIVE_FATAL:
-		return ErrArchiveFatal.wrap(errorString(archive))
+		errString := errorString(archive)
+		if errString == "Incorrect file header signature" {
+			return ErrInvalidHeaderSignature
+		}
+		fmt.Print("FATAL error: ", errString, "\n")
+		return ErrArchiveFatal.wrap(errString)
 	case ARCHIVE_FAILED:
 		return ErrArchiveFailed.wrap(errorString(archive))
 	case ARCHIVE_RETRY:
