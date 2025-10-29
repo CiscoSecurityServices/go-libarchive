@@ -68,6 +68,9 @@ docker build -t lib .
 docker run --rm -it -v $PWD:/app lib:latest go test ./...
 ```
 
+## Test
+When building a test fixture, use the folder in `fixtures/test` for golden data.
+
 
 ## Acknowledgments
 based on [mstoykov's go libarchive](https://github.com/mstoykov/go-libarchive)

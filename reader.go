@@ -15,18 +15,19 @@ import (
 
 // Reader represents libarchive archive
 type Reader struct {
-	archive *C.struct_archive
-	reader  io.Reader // the io.Reader from which we Read
-	buffer  []byte    // buffer for the raw reading
-	index   int64     // current reading index
+	archive      *C.struct_archive
+	reader       io.Reader // the io.Reader from which we Read
+	buffer       []byte    // buffer for the raw reading
+	archiveIndex int       // current archive index for multi-archive files
 }
 
 // NewReader returns new Archive by calling archive_read_open
 func NewReader(reader io.Reader) (r *Reader, err error) {
 	r = &Reader{
-		archive: C.archive_read_new(),
-		reader:  reader,
-		buffer:  make([]byte, 1024),
+		archive:      C.archive_read_new(),
+		reader:       reader,
+		buffer:       make([]byte, 1024),
+		archiveIndex: 0,
 	}
 	C.archive_read_support_filter_all(r.archive)
 	C.archive_read_support_format_all(r.archive)
@@ -34,7 +35,8 @@ func NewReader(reader io.Reader) (r *Reader, err error) {
 
 	e := C.go_libarchive_open(r.archive, (*C.char)(unsafe.Pointer(r)))
 
-	err = codeToError(r.archive, int(e))
+	// safe to use r.nextCodeToError since archive is initialized and archiveIndex is 0
+	err = r.nextCodeToError(int(e))
 	return
 }
 
@@ -72,15 +74,13 @@ func myread(archive *C.struct_archive, client_data *C.char, block unsafe.Pointer
 // is no more to be read from the archive
 func (r *Reader) Next() (ArchiveEntry, error) {
 	e := new(entryImpl)
-
-	errno := int(C.archive_read_next_header(r.archive, &e.entry))
-	err := codeToError(r.archive, errno)
-
-	if err != nil {
-		e = nil
+	err := r.nextCodeToError(int(C.archive_read_next_header(r.archive, &e.entry)))
+	if err == nil {
+		r.archiveIndex++
+		return e, nil
 	}
 
-	return e, err
+	return nil, err
 }
 
 // func (r *Reader) Position() int64 {
@@ -100,16 +100,10 @@ func (r *Reader) Read(b []byte) (n int, err error) {
 	if n == 0 {
 		err = ErrArchiveEOF
 	} else if 0 > n { // err
-		err = codeToError(r.archive, ARCHIVE_FAILED)
+		err = ErrArchiveFailed.wrap(errorString(r.archive))
 		n = 0
 	}
-	r.index += int64(n)
 	return
-}
-
-// Size returns compressed size of the current archive entry
-func (r *Reader) Size() int {
-	return int(C.archive_filter_bytes(r.archive, C.int(0)))
 }
 
 // Free frees the resources the underlying libarchive archive is using
@@ -123,7 +117,7 @@ func (r *Reader) ReadFree() error {
 }
 
 // Close closes the underlying libarchive archive
-// calling archive read_cloe
+// calling archive read_close
 func (r *Reader) ReadClose() error {
 	if C.archive_read_close(r.archive) == ARCHIVE_FATAL {
 		return ErrArchiveFatalClosing
@@ -131,7 +125,8 @@ func (r *Reader) ReadClose() error {
 	return nil
 }
 
-// Close closes the underlying libarchive archive and frees it, changing the names since its more common in go to always call Close
+// Close closes the underlying libarchive archive and frees it,
+// using Close since its more common in go to always call Close (rather than having two methods)
 func (r *Reader) Close() error {
 	err := r.ReadClose()
 	if err != nil {
