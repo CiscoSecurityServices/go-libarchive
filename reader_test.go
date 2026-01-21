@@ -8,18 +8,27 @@ import (
 
 func TestNewArchive(t *testing.T) {
 	testData := []archive_test_data{
-		{path: "a", name: "a", size: 14, mode: 0664, data: []byte("Sha lalal lal\n")},
-		{path: "b", name: "b", size: 0, symlink: "a", mode: 0777 | os.ModeSymlink, data: nil},
+		{path: "a", name: "a", size: 14, mode: 0644, data: []byte("Sha lalal lal\n")},
+		{path: "b", name: "b", size: 0, symlink: "a", mode: 0755 | os.ModeSymlink, data: nil},
 	}
 
-	for _, file := range []string{"test.tar", "test.tar.gz"} {
-		t.Run("Testing "+file, func(t *testing.T) {
-			testFile, err := os.Open("./fixtures/" + file)
+	for _, file := range []archive_test{
+		{path: "test.tar"},
+		{path: "test.tar.gz"},
+		{path: "test.cpio"},
+		{path: "test.tar", truncate: 1024 + 512},
+		{path: "test.cpio", expErr: ErrUnexpectedEOF, truncate: 360},
+	} {
+		t.Run("Testing "+file.path, func(t *testing.T) {
+			data, err := os.ReadFile("./fixtures/" + file.path)
 			if err != nil {
 				t.Fatalf("Error while reading fixture file %s ", err)
 			}
+			if file.truncate > 0 {
+				data = data[:file.truncate]
+			}
 
-			assertArchivesData(t, testFile, nil, testData)
+			assertArchivesData(t, bytes.NewReader(data), file.expErr, testData)
 		})
 	}
 }

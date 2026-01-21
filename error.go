@@ -24,25 +24,31 @@ var (
 	ErrArchiveRetry           = wrapError{level: "RETRY"}
 	ErrArchiveWarn            = wrapError{level: "WARN"}
 	ErrArchiveFatalClosing    = ErrArchiveFatal.wrap("critical error, archive closing")
+	ErrUnexpectedEOF          = fmt.Errorf("unexpected end of file")
 	ErrInvalidHeaderSignature = fmt.Errorf("invalid header signature")
 )
 
-func codeToError(archive *C.struct_archive, e int) error {
+// nextCodeToError converts libarchive return codes to Go errors
+// returns constant errors where possible
+func (r *Reader) nextCodeToError(e int) error {
 	switch e {
 	case ARCHIVE_EOF:
 		return ErrArchiveEOF
 	case ARCHIVE_FATAL:
-		errString := errorString(archive)
+		errString := errorString(r.archive)
 		if errString == "Incorrect file header signature" {
 			return ErrInvalidHeaderSignature
 		}
+		if r.archiveIndex > 0 && errString == "" {
+			return ErrUnexpectedEOF
+		}
 		return ErrArchiveFatal.wrap(errString)
 	case ARCHIVE_FAILED:
-		return ErrArchiveFailed.wrap(errorString(archive))
+		return ErrArchiveFailed.wrap(errorString(r.archive))
 	case ARCHIVE_RETRY:
-		return ErrArchiveRetry.wrap(errorString(archive))
+		return ErrArchiveRetry.wrap(errorString(r.archive))
 	case ARCHIVE_WARN:
-		return ErrArchiveWarn.wrap(errorString(archive))
+		return ErrArchiveWarn.wrap(errorString(r.archive))
 	}
 	return nil
 }
@@ -61,6 +67,9 @@ func (err wrapError) Error() string {
 	return fmt.Sprintf("%v [%s]", err.prefix(), err.err)
 }
 func (err wrapError) wrap(inner string) error {
+	if inner == "" {
+		inner = "unknown error"
+	}
 	return wrapError{level: err.level, err: inner}
 }
 func (err wrapError) prefix() string {
