@@ -88,3 +88,20 @@ func TestCorruptA(t *testing.T) {
 	}
 	assertArchivesData(t, bytes.NewReader(data), ErrInvalidHeaderSignature, testData)
 }
+
+func TestIso(t *testing.T) {
+	file, err := os.Open("./fixtures/foo.iso")
+	if err != nil {
+		t.Fatalf("Error opening fixture file %s ", err)
+	}
+	defer file.Close()
+
+	testData := []archive_test_data{
+		{path: ".", name: ".", size: 0, mode: 0755 | os.ModeDir},
+		{path: "bar", name: "bar", size: 4, mode: 0644, data: []byte("foo\n")},
+		{path: "bar-hl", name: "bar-hl", size: 0, mode: 0644, hardlink: "bar"},
+		{path: "baz", name: "baz", size: 4, mode: 0644, data: []byte("baz\n")},
+		{path: "bar-sl", name: "bar-sl", size: 0, mode: 0777 | os.ModeSymlink, symlink: "bar"},
+	}
+	assertArchivesData(t, file, nil, testData)
+}

@@ -9,12 +9,13 @@ import (
 )
 
 type archive_test_data struct {
-	path    string
-	name    string
-	symlink string
-	size    int64
-	mode    os.FileMode
-	data    []byte
+	path     string
+	name     string
+	symlink  string
+	hardlink string
+	size     int64
+	mode     os.FileMode
+	data     []byte
 }
 
 type archive_test struct {
@@ -24,6 +25,8 @@ type archive_test struct {
 }
 
 func assertArchivesData(t *testing.T, testFile io.Reader, lastErr error, expected []archive_test_data) {
+	t.Helper()
+
 	reader, err := NewReader(testFile)
 	if err != nil {
 		t.Fatalf("Error on creating Archive from a io.Reader:\n %s", err)
@@ -50,9 +53,16 @@ func assertArchivesData(t *testing.T, testFile io.Reader, lastErr error, expecte
 		if name != expectedEntry.path {
 			t.Errorf("%d - got %s expected %s as PathName", i, name, expectedEntry.path)
 		}
-		symlinkToNothing := entry.Symlink()
-		if symlinkToNothing != expectedEntry.symlink {
-			t.Errorf("%d - got %s expected %s as Symlink", i, symlinkToNothing, expectedEntry.symlink)
+		symlink := entry.Symlink()
+		if symlink != expectedEntry.symlink {
+			t.Errorf("%d - got %s expected %s as Symlink", i, symlink, expectedEntry.symlink)
+		}
+		hardlink := entry.Hardlink()
+		if hardlink != expectedEntry.hardlink {
+			t.Errorf("%d - got %s expected %s as Hardlink", i, hardlink, expectedEntry.hardlink)
+		}
+		if (expectedEntry.hardlink != "") != entry.IsHardlink() {
+			t.Errorf("%d - expected IsHardlink to be correct (got: %v)", i, entry.IsHardlink())
 		}
 		infoA := entry.Stat()
 		if infoA.Name() != expectedEntry.name {
