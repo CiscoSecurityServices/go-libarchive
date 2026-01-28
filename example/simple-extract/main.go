@@ -1,50 +1,73 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	ar "github.com/CiscoSecurityServices/go-libarchive"
 )
 
-func printContents(filename string) {
-	fmt.Println("file ", filename)
-	file, err := os.Open(filename)
+func extractContents(srcFilename, destFilename string) error {
+	fmt.Printf("from: %s to: %s\n", srcFilename, destFilename)
+
+	file, err := os.Open(srcFilename)
 	if err != nil {
-		fmt.Printf("Error while opening file:\n %s\n", err)
-		return
+		return fmt.Errorf("error opening source file %s: %w", srcFilename, err)
 	}
 	reader, err := ar.NewReader(file)
 	if err != nil {
-		fmt.Printf("Error on NewReader\n %s\n", err)
+		return fmt.Errorf("error opening libarchive reader %s: %w", srcFilename, err)
 	}
 	defer reader.Close()
+
 	for {
 		entry, err := reader.Next()
 		if err != nil {
 			if err == io.EOF {
 				break
 			}
-			fmt.Printf("Error on reader.Next():\n%s\n", err)
-			return
+			return fmt.Errorf("error reading next entry from archive %s: %w", srcFilename, err)
 		}
-		fmt.Printf("Name %s\n", entry.PathName())
-		var buf bytes.Buffer
-		size, err := buf.ReadFrom(reader)
 
-		if err != nil {
-			fmt.Printf("Error on reading entry from archive:\n%s\n", err)
-		}
-		if size > 0 {
-			fmt.Println("Contents:\n***************", buf.String(), "*********************")
+		if err := save(filepath.Join(destFilename, entry.PathName()), entry.Stat().Mode(), reader); err != nil {
+			return fmt.Errorf("error saving entry %s: %w", entry.PathName(), err)
 		}
 	}
+	return nil
+}
+
+func save(path string, mode os.FileMode, r *ar.Reader) error {
+	switch {
+	case mode.IsDir():
+		return os.MkdirAll(path, 0755)
+	case mode.IsRegular():
+		file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		if _, err = io.Copy(file, r); err != nil {
+			return fmt.Errorf("error copying file %s: %w", path, err)
+		}
+	default:
+		fmt.Printf("Skipping unsupported file type: %s %s\n", path, mode)
+	}
+	return nil
 }
 
 func main() {
-	for _, filename := range os.Args[1:] {
-		printContents(filename)
+	fmt.Printf("libarchive version: %s\n", ar.LibArchiveVersion)
+
+	if len(os.Args) < 3 {
+		fmt.Println("Usage: simple-extract-copy <file1> <file2>")
+		return
+	}
+
+	if err := extractContents(os.Args[1], os.Args[2]); err != nil {
+		fmt.Printf("Extraction error: %v\n", err)
+		os.Exit(1)
 	}
 }
