@@ -22,11 +22,16 @@ type Reader struct {
 }
 
 // NewReader returns new Archive by calling archive_read_open
-func NewReader(reader io.Reader) (r *Reader, err error) {
+func NewReader(reader io.Reader) (*Reader, error) {
+	return NewReaderWithBufferSize(reader, 8*1024)
+}
+
+// NewReaderWithBufferSize returns new Archive by calling archive_read_open with specified buffer size
+func NewReaderWithBufferSize(reader io.Reader, bufferSize int) (r *Reader, err error) {
 	r = &Reader{
 		archive:      C.archive_read_new(),
 		reader:       reader,
-		buffer:       make([]byte, 1024),
+		buffer:       make([]byte, bufferSize),
 		archiveIndex: 0,
 	}
 	C.archive_read_support_filter_all(r.archive)
