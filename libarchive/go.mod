@@ -1,3 +1,3 @@
-module github.com/CiscoSecurityServices/go-libarchive/libarchive
+module github.com/CiscoSecurityServices/go-clowncar/libarchive
 
 go 1.22.2

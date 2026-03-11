@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	ar "github.com/CiscoSecurityServices/go-libarchive"
+	ar "github.com/CiscoSecurityServices/go-clowncar/libarchive"
 )
 
 func extractContents(srcFilename, destFilename string) error {

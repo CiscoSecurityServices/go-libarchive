@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	ar "github.com/CiscoSecurityServices/go-libarchive"
+	ar "github.com/CiscoSecurityServices/go-clowncar/libarchive"
 )
 
 func printContents(filename string) {

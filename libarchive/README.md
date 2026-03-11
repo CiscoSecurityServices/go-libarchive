@@ -12,7 +12,7 @@ import (
 	"io"
 	"os"
 
-	ar "github.com/CiscoSecurityServices/go-libarchive"
+	ar "github.com/CiscoSecurityServices/go-clowncar/libarchive"
 )
 
 func printContents(filename string) {
@@ -76,4 +76,3 @@ When building a test fixture, use the folder in `fixtures/test` for golden data.
 based on [mstoykov's go libarchive](https://github.com/mstoykov/go-libarchive)
 which is based on
 based on [robxu9's go-libarchive](https://github.com/robxu9/go-libarchive)
-
