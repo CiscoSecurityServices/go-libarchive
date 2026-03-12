@@ -1,3 +1,9 @@
+# libarchive
+
+Golang bindings for the [libarchive](http://libarchive.org) library.
+
+## Simple Extraction Example
+```golang
 package main
 
 import (
@@ -6,7 +12,7 @@ import (
 	"io"
 	"os"
 
-	ar "github.com/CiscoSecurityServices/go-libarchive"
+	ar "github.com/CiscoSecurityServices/go-clowncar/libarchive"
 )
 
 func printContents(filename string) {
@@ -23,16 +29,22 @@ func printContents(filename string) {
 	defer reader.Close()
 	for {
 		entry, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if errors.Is(err, ErrArchiveWarn) {
+			// do something with the warning
+			fmt.Println(err)
+			continue
+		}
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
 			fmt.Printf("Error on reader.Next():\n%s\n", err)
 			return
 		}
 		fmt.Printf("Name %s\n", entry.PathName())
 		var buf bytes.Buffer
 		size, err := buf.ReadFrom(reader)
+
 
 		if err != nil {
 			fmt.Printf("Error on reading entry from archive:\n%s\n", err)
@@ -48,3 +60,19 @@ func main() {
 		printContents(filename)
 	}
 }
+```
+
+## Docker
+```
+docker build -t lib .
+docker run --rm -it -v $PWD:/app lib:latest go test ./...
+```
+
+## Test
+When building a test fixture, use the folder in `fixtures/test` for golden data.
+
+
+## Acknowledgments
+based on [mstoykov's go libarchive](https://github.com/mstoykov/go-libarchive)
+which is based on
+based on [robxu9's go-libarchive](https://github.com/robxu9/go-libarchive)
