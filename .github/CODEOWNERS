@@ -1,0 +1,14 @@
+# CODEOWNERS file for CiscoSecurityServices repository
+# 
+# This file defines code ownership for this repository.
+# Lines starting with '#' are comments.
+# Each line is a file pattern followed by one or more owners.
+#
+# Owners can be:
+# - GitHub usernames (e.g., @username)
+# - GitHub teams (e.g., @org/team-name)
+#
+# For more information: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for all files in the repository
+* @CiscoSecurityServices/corona-development
